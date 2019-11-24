@@ -99,7 +99,7 @@ public class IslandTeamListeners implements Listener {
 
     private void zeroLevel(Island island) {
         if (cil.containsKey(island)) {
-            long level = cil.get(island).getResult().getLevel();
+            long level = cil.get(island).getResult().getLevel().get();
             // Get deaths
             int deaths = addon.getPlayers().getDeaths(island.getWorld(), island.getOwner());
             // Death penalty calculation.

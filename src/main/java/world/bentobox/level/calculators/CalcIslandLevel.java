@@ -1,8 +1,16 @@
 package world.bentobox.level.calculators;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -13,7 +21,6 @@ import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.type.Slab;
 
-import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multiset.Entry;
 import com.google.common.collect.Multisets;
@@ -24,7 +31,7 @@ import world.bentobox.bentobox.util.Util;
 import world.bentobox.level.Level;
 
 
-public class CalcIslandLevel {
+public class CalcIslandLevel extends IslandLevelCalculator {
 
     private static final String LINE_BREAK = "==================================";
 
@@ -63,13 +70,8 @@ public class CalcIslandLevel {
         this.onExit = onExit;
         this.worlds = new ArrayList<>();
         this.worlds.add(world);
-        q = new LinkedList<>();
-
         // Results go here
         result = new Results();
-
-        // Set the initial island handicap
-        result.setInitialLevel(addon.getInitialIslandLevel(island));
 
         // Get chunks to scan
         chunksToScan = getChunksToScan(island);
@@ -92,19 +94,25 @@ public class CalcIslandLevel {
                 total += chunksToScan.size();
             }
         }
-        queueid = Bukkit.getScheduler().scheduleSyncRepeatingTask(addon.getPlugin(), new Runnable() {
-            public void run() {
-                for (int i = 0; i < 10; i++) {
-                    if (q.size() == 0) {
-                        return;
-                    }
-                    Chunk c = q.remove();
-                    getChunk(c);
+        runCalcs();
+    }
+
+    /**
+     * Runs island level calculations.
+     */
+    public void runCalcs() {
+        this.addIsland(island);
+        q = new LinkedList<>();
+        queueid = Bukkit.getScheduler().scheduleSyncRepeatingTask(addon.getPlugin(), () -> {
+            for (int i = 0; i < 10; i++) {
+                if (q.size() == 0) {
+                    return;
                 }
+                Chunk c = q.remove();
+                getChunk(c);
             }
         }, 1L, 1L);
         chunksToScan.forEach(c -> worlds.forEach(w -> Util.getChunkAtAsync(w, c.x, c.z).thenAccept(this::addChunkQueue)));
-
     }
 
     private void addChunkQueue(Chunk ch) {
@@ -160,11 +168,11 @@ public class CalcIslandLevel {
     private void checkBlock(BlockData bd, boolean belowSeaLevel) {
         int count = limitCount(bd.getMaterial());
         if (belowSeaLevel) {
-            result.underWaterBlockCount.addAndGet(count);
-            result.uwCount.add(bd.getMaterial());
+            result.getUnderWaterBlockCount().addAndGet(count);
+            result.getUwCount().add(bd.getMaterial());
         } else {
-            result.rawBlockCount.addAndGet(count);
-            result.mdCount.add(bd.getMaterial());
+            result.getRawBlockCount().addAndGet(count);
+            result.getMdCount().add(bd.getMaterial());
         }
     }
 
@@ -180,7 +188,7 @@ public class CalcIslandLevel {
                 limitCount.put(md, --count);
                 return getValue(md);
             } else {
-                result.ofCount.add(md);
+                result.getOfCount().add(md);
                 return 0;
             }
         }
@@ -203,7 +211,7 @@ public class CalcIslandLevel {
             return addon.getSettings().getBlockValues().get(md);
         }
         // Not in config
-        result.ncCount.add(md);
+        result.getNcCount().add(md);
         return 0;
     }
 
@@ -223,43 +231,46 @@ public class CalcIslandLevel {
     }
 
     private void tidyUp() {
+        // Set the initial island handicap
+        result.setInitialLevel(addon.getInitialIslandLevel(island));
+
         // Finalize calculations
-        result.rawBlockCount.addAndGet((long)(result.underWaterBlockCount.get() * addon.getSettings().getUnderWaterMultiplier()));
+        result.getRawBlockCount().addAndGet((long)(result.getUnderWaterBlockCount().get() * addon.getSettings().getUnderWaterMultiplier()));
 
         // Set the death penalty
         if (this.addon.getSettings().isSumTeamDeaths())
         {
             for (UUID uuid : this.island.getMemberSet())
             {
-                this.result.deathHandicap.addAndGet(this.addon.getPlayers().getDeaths(this.world, uuid));
+                this.result.getDeathHandicap().addAndGet(this.addon.getPlayers().getDeaths(this.world, uuid));
             }
         }
         else
         {
             // At this point, it may be that the island has become unowned.
-            this.result.deathHandicap.set(this.island.getOwner() == null ? 0 :
+            this.result.getDeathHandicap().set(this.island.getOwner() == null ? 0 :
                 this.addon.getPlayers().getDeaths(this.world, this.island.getOwner()));
         }
 
-        long blockAndDeathPoints = this.result.rawBlockCount.get();
+        long blockAndDeathPoints = this.result.getRawBlockCount().get();
 
         if (this.addon.getSettings().getDeathPenalty() > 0)
         {
             // Proper death penalty calculation.
-            blockAndDeathPoints -= this.result.deathHandicap.get() * this.addon.getSettings().getDeathPenalty();
+            blockAndDeathPoints -= this.result.getDeathHandicap().get() * this.addon.getSettings().getDeathPenalty();
         }
-        this.result.level.set(calculateLevel(blockAndDeathPoints));
+        this.result.getLevel().set(calculateLevel(blockAndDeathPoints));
 
         // Calculate how many points are required to get to the next level
-        long nextLevel = this.result.level.get();
+        long nextLevel = this.result.getLevel().get();
         long blocks = blockAndDeathPoints;
-        while (nextLevel < this.result.level.get() + 1 && blocks - blockAndDeathPoints < MAX_AMOUNT) {
+        while (nextLevel < this.result.getLevel().get() + 1 && blocks - blockAndDeathPoints < MAX_AMOUNT) {
             nextLevel = calculateLevel(++blocks);
         }
-        this.result.pointsToNextLevel.set(blocks - blockAndDeathPoints);
+        this.result.getPointsToNextLevel().set(blocks - blockAndDeathPoints);
 
         // Report
-        result.report = getReport();
+        result.setReport(getReport());
         // All done.
         if (onExit != null) {
             Bukkit.getScheduler().runTask(addon.getPlugin(), onExit);
@@ -270,7 +281,7 @@ public class CalcIslandLevel {
     private long calculateLevel(long blockAndDeathPoints) {
         String calcString = addon.getSettings().getLevelCalc();
         String withValues = calcString.replace("blocks", String.valueOf(blockAndDeathPoints)).replace("level_cost", String.valueOf(this.addon.getSettings().getLevelCost()));
-        return (long)eval(withValues) - this.island.getLevelHandicap() - result.initialLevel.get();
+        return (long)eval(withValues) - this.island.getLevelHandicap() - result.getInitialLevel().get();
     }
 
     private List<String> getReport() {
@@ -278,25 +289,25 @@ public class CalcIslandLevel {
         // provide counts
         reportLines.add("Level Log for island in " + addon.getPlugin().getIWM().getFriendlyName(island.getWorld()) + " at " + Util.xyz(island.getCenter().toVector()));
         reportLines.add("Island owner UUID = " + island.getOwner());
-        reportLines.add("Total block value count = " + String.format("%,d",result.rawBlockCount.get()));
+        reportLines.add("Total block value count = " + String.format("%,d",result.getRawBlockCount().get()));
         reportLines.add("Formula to calculate island level: " + addon.getSettings().getLevelCalc());
         reportLines.add("Level cost = " + addon.getSettings().getLevelCost());
-        reportLines.add("Deaths handicap = " + result.deathHandicap.get());
-        reportLines.add("Initial island level = " + (0L - result.initialLevel.get()));
-        reportLines.add("Level calculated = " + result.level.get());
+        reportLines.add("Deaths handicap = " + result.getDeathHandicap().get());
+        reportLines.add("Initial island level = " + (0L - result.getInitialLevel().get()));
+        reportLines.add("Level calculated = " + result.getLevel().get());
         reportLines.add(LINE_BREAK);
         int total = 0;
-        if (!result.uwCount.isEmpty()) {
+        if (!result.getUwCount().isEmpty()) {
             reportLines.add("Underwater block count (Multiplier = x" + addon.getSettings().getUnderWaterMultiplier() + ") value");
-            reportLines.add("Total number of underwater blocks = " + String.format("%,d",result.uwCount.size()));
-            reportLines.addAll(sortedReport(total, result.uwCount));
+            reportLines.add("Total number of underwater blocks = " + String.format("%,d",result.getUwCount().size()));
+            reportLines.addAll(sortedReport(total, result.getUwCount()));
         }
         reportLines.add("Regular block count");
-        reportLines.add("Total number of blocks = " + String.format("%,d",result.mdCount.size()));
-        reportLines.addAll(sortedReport(total, result.mdCount));
+        reportLines.add("Total number of blocks = " + String.format("%,d",result.getMdCount().size()));
+        reportLines.addAll(sortedReport(total, result.getMdCount()));
 
-        reportLines.add("Blocks not counted because they exceeded limits: " + String.format("%,d",result.ofCount.size()));
-        Iterable<Multiset.Entry<Material>> entriesSortedByCount = result.ofCount.entrySet();
+        reportLines.add("Blocks not counted because they exceeded limits: " + String.format("%,d",result.getOfCount().size()));
+        Iterable<Multiset.Entry<Material>> entriesSortedByCount = result.getOfCount().entrySet();
         Iterator<Entry<Material>> it = entriesSortedByCount.iterator();
         while (it.hasNext()) {
             Entry<Material> type = it.next();
@@ -311,8 +322,8 @@ public class CalcIslandLevel {
         }
         reportLines.add(LINE_BREAK);
         reportLines.add("Blocks on island that are not in config.yml");
-        reportLines.add("Total number = " + String.format("%,d",result.ncCount.size()));
-        entriesSortedByCount = result.ncCount.entrySet();
+        reportLines.add("Total number = " + String.format("%,d",result.getNcCount().size()));
+        entriesSortedByCount = result.getNcCount().entrySet();
         it = entriesSortedByCount.iterator();
         while (it.hasNext()) {
             Entry<Material> type = it.next();
@@ -344,80 +355,9 @@ public class CalcIslandLevel {
     /**
      * @return the result
      */
+    @Override
     public Results getResult() {
         return result;
-    }
-
-    /**
-     * Results class
-     *
-     */
-    public class Results {
-        private List<String> report;
-        private final Multiset<Material> mdCount = HashMultiset.create();
-        private final Multiset<Material> uwCount = HashMultiset.create();
-        private final Multiset<Material> ncCount = HashMultiset.create();
-        private final Multiset<Material> ofCount = HashMultiset.create();
-        // AtomicLong and AtomicInteger must be used because they are changed by multiple concurrent threads
-        private AtomicLong rawBlockCount = new AtomicLong(0);
-        private AtomicLong underWaterBlockCount = new AtomicLong(0);
-        private AtomicLong level = new AtomicLong(0);
-        private AtomicInteger deathHandicap = new AtomicInteger(0);
-        private AtomicLong pointsToNextLevel = new AtomicLong(0);
-        private AtomicLong initialLevel = new AtomicLong(0);
-
-        /**
-         * @return the deathHandicap
-         */
-        public int getDeathHandicap() {
-            return deathHandicap.get();
-        }
-
-        /**
-         * @return the report
-         */
-        public List<String> getReport() {
-            return report;
-        }
-        /**
-         * Set level
-         * @param level - level
-         */
-        public void setLevel(int level) {
-            this.level.set(level);
-        }
-        /**
-         * @return the level
-         */
-        public long getLevel() {
-            return level.get();
-        }
-        /**
-         * @return the pointsToNextLevel
-         */
-        public long getPointsToNextLevel() {
-            return pointsToNextLevel.get();
-        }
-
-        public long getInitialLevel() {
-            return initialLevel.get();
-        }
-
-        public void setInitialLevel(long initialLevel) {
-            this.initialLevel.set(initialLevel);
-        }
-
-        /* (non-Javadoc)
-         * @see java.lang.Object#toString()
-         */
-        @Override
-        public String toString() {
-            return "Results [report=" + report + ", mdCount=" + mdCount + ", uwCount=" + uwCount + ", ncCount="
-                    + ncCount + ", ofCount=" + ofCount + ", rawBlockCount=" + rawBlockCount + ", underWaterBlockCount="
-                    + underWaterBlockCount + ", level=" + level + ", deathHandicap=" + deathHandicap
-                    + ", pointsToNextLevel=" + pointsToNextLevel + ", initialLevel=" + initialLevel + "]";
-        }
-
     }
 
     private static double eval(final String str) {

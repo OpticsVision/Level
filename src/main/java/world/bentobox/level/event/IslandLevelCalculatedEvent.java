@@ -4,7 +4,7 @@ import java.util.UUID;
 
 import world.bentobox.bentobox.api.events.IslandBaseEvent;
 import world.bentobox.bentobox.database.objects.Island;
-import world.bentobox.level.calculators.CalcIslandLevel.Results;
+import world.bentobox.level.calculators.Results;
 
 /**
  * This event is fired after the island level is calculated and before the results are saved.

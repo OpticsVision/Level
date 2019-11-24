@@ -11,7 +11,6 @@ import world.bentobox.bentobox.api.events.addon.AddonEvent;
 import world.bentobox.bentobox.api.user.User;
 import world.bentobox.bentobox.database.objects.Island;
 import world.bentobox.level.Level;
-import world.bentobox.level.calculators.CalcIslandLevel.Results;
 import world.bentobox.level.event.IslandLevelCalculatedEvent;
 import world.bentobox.level.event.IslandPreLevelEvent;
 
@@ -42,13 +41,17 @@ public class PlayerLevel {
         this.asker = asker;
         this.targetPlayer = targetPlayer;
         this.oldLevel = addon.getIslandLevel(world, targetPlayer);
-
+        this.calc = new CalcIslandLevel(addon, island, this::fireIslandLevelCalcEvent);
+        if (calc.isCalculating(island)) {
+            asker.sendMessage("island.level.in-progress");
+            return;
+        }
         // Fire pre-level calc event
         IslandPreLevelEvent e = new IslandPreLevelEvent(targetPlayer, island);
         addon.getServer().getPluginManager().callEvent(e);
         if (!e.isCancelled()) {
             // Calculate if not cancelled
-            calc = new CalcIslandLevel(addon, island, this::fireIslandLevelCalcEvent);
+            calc.runCalcs();
         }
     }
 
@@ -69,7 +72,7 @@ public class PlayerLevel {
         addon.getServer().getPluginManager().callEvent(new AddonEvent().builder().addon(addon).keyValues(keyValues).build());
         Results results = ilce.getResults();
         // Save the results
-        island.getMemberSet().forEach(m -> addon.setIslandLevel(world, m, results.getLevel()));
+        island.getMemberSet().forEach(m -> addon.setIslandLevel(world, m, results.getLevel().get()));
         // Display result if event is not cancelled
         if (!ilce.isCancelled() && asker != null) {
             informPlayers(results);
@@ -90,7 +93,7 @@ public class PlayerLevel {
             asker.sendMessage("island.level.deaths", "[number]", String.valueOf(results.getDeathHandicap()));
         }
         // Send player how many points are required to reach next island level
-        if (results.getPointsToNextLevel() >= 0 && results.getPointsToNextLevel() < CalcIslandLevel.MAX_AMOUNT) {
+        if (results.getPointsToNextLevel().get() >= 0 && results.getPointsToNextLevel().get() < CalcIslandLevel.MAX_AMOUNT) {
             asker.sendMessage("island.level.required-points-to-next-level", "[points]", String.valueOf(results.getPointsToNextLevel()));
         }
         // Tell other team members

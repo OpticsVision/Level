@@ -1,7 +1,8 @@
 package world.bentobox.level.calculators;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.bukkit.Material;
 
@@ -13,32 +14,35 @@ import com.google.common.collect.Multiset;
  *
  */
 public class Results {
-    private int deathHandicap = 0;
-    private long initialLevel = 0;
-    private long level = 0;
+    // AtomicLong and AtomicInteger must be used because they are changed by multiple concurrent threads
+    private AtomicInteger deathHandicap = new AtomicInteger(0);
+    private AtomicLong initialLevel = new AtomicLong(0);
+    private AtomicLong level = new AtomicLong(0);
     private final Multiset<Material> mdCount = HashMultiset.create();
     private final Multiset<Material> ncCount = HashMultiset.create();
     private final Multiset<Material> ofCount = HashMultiset.create();
-    private long pointsToNextLevel = 0;
-    private long rawBlockCount = 0;
-    private List<String> report = new ArrayList<>();
-    private long underWaterBlockCount = 0;
+    private AtomicLong pointsToNextLevel = new AtomicLong(0);
+    private AtomicLong rawBlockCount = new AtomicLong(0);
+    private List<String> report;
+    private AtomicLong underWaterBlockCount = new AtomicLong(0);
     private final Multiset<Material> uwCount = HashMultiset.create();
 
     /**
      * @return the deathHandicap
      */
-    public int getDeathHandicap() {
+    public AtomicInteger getDeathHandicap() {
         return deathHandicap;
     }
-
-    public long getInitialLevel() {
+    /**
+     * @return the initialLevel
+     */
+    public AtomicLong getInitialLevel() {
         return initialLevel;
     }
     /**
      * @return the level
      */
-    public long getLevel() {
+    public AtomicLong getLevel() {
         return level;
     }
     /**
@@ -64,14 +68,14 @@ public class Results {
     /**
      * @return the pointsToNextLevel
      */
-    public long getPointsToNextLevel() {
+    public AtomicLong getPointsToNextLevel() {
         return pointsToNextLevel;
     }
 
     /**
      * @return the rawBlockCount
      */
-    public long getRawBlockCount() {
+    public AtomicLong getRawBlockCount() {
         return rawBlockCount;
     }
 
@@ -85,7 +89,7 @@ public class Results {
     /**
      * @return the underWaterBlockCount
      */
-    public long getUnderWaterBlockCount() {
+    public AtomicLong getUnderWaterBlockCount() {
         return underWaterBlockCount;
     }
 
@@ -99,12 +103,26 @@ public class Results {
     /**
      * @param deathHandicap the deathHandicap to set
      */
-    public void setDeathHandicap(int deathHandicap) {
+    public void setDeathHandicap(AtomicInteger deathHandicap) {
         this.deathHandicap = deathHandicap;
     }
 
-    public void setInitialLevel(long initialLevel) {
+    /**
+     * @param initialLevel the initialLevel to set
+     */
+    public void setInitialLevel(AtomicLong initialLevel) {
         this.initialLevel = initialLevel;
+    }
+
+    public void setInitialLevel(long initialLevel) {
+        this.initialLevel.set(initialLevel);
+    }
+
+    /**
+     * @param level the level to set
+     */
+    public void setLevel(AtomicLong level) {
+        this.level = level;
     }
 
     /**
@@ -112,27 +130,20 @@ public class Results {
      * @param level - level
      */
     public void setLevel(int level) {
-        this.level = level;
-    }
-
-    /**
-     * @param level the level to set
-     */
-    public void setLevel(long level) {
-        this.level = level;
+        this.level.set(level);
     }
 
     /**
      * @param pointsToNextLevel the pointsToNextLevel to set
      */
-    public void setPointsToNextLevel(long pointsToNextLevel) {
+    public void setPointsToNextLevel(AtomicLong pointsToNextLevel) {
         this.pointsToNextLevel = pointsToNextLevel;
     }
 
     /**
      * @param rawBlockCount the rawBlockCount to set
      */
-    public void setRawBlockCount(long rawBlockCount) {
+    public void setRawBlockCount(AtomicLong rawBlockCount) {
         this.rawBlockCount = rawBlockCount;
     }
 
@@ -146,17 +157,8 @@ public class Results {
     /**
      * @param underWaterBlockCount the underWaterBlockCount to set
      */
-    public void setUnderWaterBlockCount(long underWaterBlockCount) {
+    public void setUnderWaterBlockCount(AtomicLong underWaterBlockCount) {
         this.underWaterBlockCount = underWaterBlockCount;
-    }
-
-    /**
-     * Add to death handicap
-     * @param deaths - number to add
-     */
-    public void addToDeathHandicap(int deaths) {
-        this.deathHandicap += deaths;
-
     }
 
     /* (non-Javadoc)
