@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
@@ -81,6 +82,7 @@ public class TopTen implements Listener {
             topTenList.get(world).remove(ownerUUID);
             return;
         }
+
         topTenList.get(world).addLevel(ownerUUID, l);
     }
 
@@ -144,7 +146,7 @@ public class TopTen implements Listener {
         }
 
         PanelItemBuilder builder = new PanelItemBuilder()
-                .icon(name)
+                .icon(Material.PLAYER_HEAD)
                 .name(name)
                 .description(description);
         return builder.build();

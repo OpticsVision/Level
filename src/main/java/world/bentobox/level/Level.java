@@ -151,6 +151,14 @@ public class Level extends Addon {
         }
     }
 
+    @Override
+    public void onReload() {
+        // Load settings from config.yml. This will check if there are any issues with it too.
+        if (loadSettings()) {
+            configObject.saveConfigObject(settings);
+        }
+    }
+
     private boolean loadSettings() {
         // Load settings again to get worlds
         settings = configObject.loadConfigObject();
