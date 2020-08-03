@@ -2,6 +2,8 @@ package world.bentobox.level;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -31,6 +33,7 @@ import world.bentobox.level.config.BlockConfig;
 import world.bentobox.level.config.ConfigSettings;
 import world.bentobox.level.listeners.IslandActivitiesListeners;
 import world.bentobox.level.listeners.JoinLeaveListener;
+import world.bentobox.level.objects.LevelsData;
 import world.bentobox.level.requests.LevelRequestHandler;
 import world.bentobox.level.requests.TopTenRequestHandler;
 
@@ -47,6 +50,7 @@ public class Level extends Addon implements Listener {
     private Pipeliner pipeliner;
     private LevelsManager manager;
     private boolean stackersEnabled;
+    private List<World> worlds;
 
     @Override
     public void onLoad() {
@@ -79,12 +83,14 @@ public class Level extends Addon implements Listener {
         this.registerListener(new JoinLeaveListener(this));
         this.registerListener(this);
         // Register commands for GameModes
+        worlds = new ArrayList<>();
         getPlugin().getAddonsManager().getGameModeAddons().stream()
         .filter(gm -> !settings.getGameModes().contains(gm.getDescription().getName()))
         .forEach(gm -> {
             log("Level hooking into " + gm.getDescription().getName());
             registerCommands(gm);
             registerPlaceholders(gm);
+            worlds.add(gm.getOverWorld());
         });
         // Register request handlers
         registerRequestHandler(new LevelRequestHandler(this));
@@ -313,7 +319,7 @@ public class Level extends Addon implements Listener {
     /**
      * Calculates a user's island
      * @param world - the world where this island is
-     * @param user - not used! See depecration message
+     * @param user - not used! See depecrated message
      * @param playerUUID - the target island member's UUID
      * @deprecated Do not use this anymore. Use getManager().calculateLevel(playerUUID, island)
      */
@@ -323,4 +329,23 @@ public class Level extends Addon implements Listener {
         if (island != null) getManager().calculateLevel(playerUUID, island);
     }
 
+    /**
+     * Provides the player's level and initial island level in LevelsData format
+     * Only for backward compatibility
+     * @param targetPlayer - UUID of target player
+     * @return LevelsData object or null if not found
+     * @deprecated LevelsData will be removed in future releases. Use other methods. Only fills the level and initial level
+     */
+    @Deprecated
+    public LevelsData getLevelsData(UUID targetPlayer) {
+        LevelsData ld = new LevelsData(targetPlayer);
+        worlds.forEach(w -> {
+            Island i = getIslands().getIsland(w, targetPlayer);
+            if (i != null) {
+                ld.setInitialLevel(w, this.getInitialIslandLevel(i));
+                ld.setLevel(w, this.getIslandLevel(w, targetPlayer));
+            }
+        });
+        return ld;
+    }
 }
