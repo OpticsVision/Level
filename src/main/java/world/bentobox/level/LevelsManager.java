@@ -16,15 +16,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
+import org.bukkit.entity.Player;
+import org.bukkit.event.world.WorldEvent;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 
 import com.google.common.collect.Maps;
 
+import world.bentobox.bentobox.api.metadata.MetaDataValue;
 import world.bentobox.bentobox.api.panels.PanelItem;
 import world.bentobox.bentobox.api.panels.builders.PanelBuilder;
 import world.bentobox.bentobox.api.panels.builders.PanelItemBuilder;
@@ -178,6 +178,64 @@ public class LevelsManager {
             }
             // Save result
             setIslandResults(island.getWorld(), island.getOwner(), r);
+            //OpticsVision Addition:
+            System.out.println("got here 1");
+            island.putMetaData("test", new MetaDataValue(true));
+            System.out.println("got here 2");
+            if (!island.getUniqueId().contains("(nether)")) {
+                if (r.getLevel() > 1000) {
+                    for (int i = 0; i < island.getMembers().size(); i++) {
+                        Player p = Bukkit.getPlayer(island.getMemberSet().asList().get(i));
+                        String player = p.getName();
+                        if (!p.hasPermission("multiverse.access.bskyblock_world_nether")) {
+                        String netherPerms = "luckperms user " + player + " permission set multiverse.access.world_nether";
+                        String bSNetherPerms = "luckperms user " + player + " permission set multiverse.access.bskyblock_world_nether";
+                        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), netherPerms);
+                        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), bSNetherPerms);
+                        p.sendMessage(ChatColor.BLUE + "" + ChatColor.BOLD + "You now have access to the nether! Build a portal to enter your nether island, or do /warp nethershop");
+                        }
+                    }
+                    island.setUniqueId(island.getUniqueId() + "(nether)");
+                }
+            }
+            if (!island.getUniqueId().contains("(end)")) {
+                if (r.getLevel() > 10000) {
+                    for (int i = 0; i < island.getMembers().size(); i++) {
+                        Player p = Bukkit.getPlayer(island.getMemberSet().asList().get(i));
+                        String player = p.getName();
+                        if (!p.hasPermission("multiverse.access.bskyblock_world_the_end")) {
+                            String endPerms = "luckperms user " + player + " permission set multiverse.access.world_the_end";
+                            String bSEndPerms = "luckperms user " + player + " permission set multiverse.access.bskyblock_world_the_end";
+                            Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), endPerms);
+                            Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), bSEndPerms);
+                            p.sendMessage(ChatColor.BLUE + "" + ChatColor.BOLD + "You now have access to the end! GG");
+
+                        }
+                    }
+                    Player leader = Bukkit.getPlayer(island.getOwner());
+                    String leaderString = leader.getName();
+                    String islandName = island.getName();
+                    if (islandName == null) {
+                        islandName = "(Unnamed)";
+                    }
+                    Bukkit.broadcastMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "The Island " + ChatColor.WHITE + islandName + ChatColor.DARK_RED + "" + ChatColor.BOLD + " led by " + ChatColor.WHITE + leaderString + ChatColor.DARK_RED + "" + ChatColor.BOLD + " just unlocked their end island!");
+                    Location l = new Location(Bukkit.getServer().getWorld("world"), 0.0, 100.0, 0.0);
+                    Location l2 = new Location(Bukkit.getServer().getWorld("bskyblock_world"), 0.0, 100.0, 0.0);
+                    Location l3 = new Location(Bukkit.getServer().getWorld("bskyblock_world_nether"), 0.0, 100.0, 0.0);
+                    Location l4 = new Location(Bukkit.getServer().getWorld("bskyblock_world_the_end"), 0.0, 100.0, 0.0);
+                    Location l5 = new Location(Bukkit.getServer().getWorld("world_nether"), 0.0, 100.0, 0.0);
+                    Location l6 = new Location(Bukkit.getServer().getWorld("world_the_end"), 0.0, 100.0, 0.0);
+
+                    Bukkit.getServer().getWorld("world").playSound(l, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
+                    Bukkit.getServer().getWorld("bskyblock_world").playSound(l2, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
+                    Bukkit.getServer().getWorld("bskyblock_world_nether").playSound(l3, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
+                    Bukkit.getServer().getWorld("bskyblock_world_the_end").playSound(l4, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
+                    Bukkit.getServer().getWorld("world_nether").playSound(l5, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
+                    Bukkit.getServer().getWorld("world_the_end").playSound(l6, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
+                    island.setUniqueId(island.getUniqueId() + "(end)");
+                }
+            }
+
             // Save top ten
             addon.getManager().saveTopTen(island.getWorld());
             // Save the island scan details
