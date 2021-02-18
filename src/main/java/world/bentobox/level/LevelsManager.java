@@ -179,9 +179,20 @@ public class LevelsManager {
             // Save result
             setIslandResults(island.getWorld(), island.getOwner(), r);
             //OpticsVision Addition:
-            System.out.println("got here 1");
-            island.putMetaData("test", new MetaDataValue(true));
+            /*
+            System.out.println("got here 1, test45");
+            if (island.getMetaData() == null) {
+                island.setMetaData(new HashMap<>(2));
+            }
             System.out.println("got here 2");
+            island.putMetaData("test", new MetaDataValue(0.69));
+            System.out.println("got here 3");
+            double test = island.getMetaData("test").asDouble();
+            System.out.println("got here 4");
+            System.out.println(test);
+
+            System.out.println("got here 5");
+            */
             if (!island.getUniqueId().contains("(nether)")) {
                 if (r.getLevel() > 1000) {
                     for (int i = 0; i < island.getMembers().size(); i++) {
