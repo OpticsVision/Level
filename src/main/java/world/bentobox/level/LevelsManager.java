@@ -193,7 +193,13 @@ public class LevelsManager {
 
             System.out.println("got here 5");
             */
-            if (!island.getUniqueId().contains("(nether)")) {
+            if (island.getMetaData() == null) {
+                island.setMetaData(new HashMap<>(2));
+                island.putMetaData("NetherAccess", new MetaDataValue(false));
+                island.putMetaData("EndAccess", new MetaDataValue(false));
+            }
+
+            if (!island.getMetaData("NetherAccess").asBoolean()) {
                 if (r.getLevel() > 1000) {
                     for (int i = 0; i < island.getMembers().size(); i++) {
                         Player p = Bukkit.getPlayer(island.getMemberSet().asList().get(i));
@@ -206,10 +212,12 @@ public class LevelsManager {
                         p.sendMessage(ChatColor.BLUE + "" + ChatColor.BOLD + "You now have access to the nether! Build a portal to enter your nether island, or do /warp nethershop");
                         }
                     }
-                    island.setUniqueId(island.getUniqueId() + "(nether)");
+                    MetaDataValue test = new MetaDataValue(true);
+
+                    island.putMetaData("NetherAccess", test);
                 }
             }
-            if (!island.getUniqueId().contains("(end)")) {
+            if (!island.getMetaData("EndAccess").asBoolean()) {
                 if (r.getLevel() > 10000) {
                     for (int i = 0; i < island.getMembers().size(); i++) {
                         Player p = Bukkit.getPlayer(island.getMemberSet().asList().get(i));
@@ -243,7 +251,10 @@ public class LevelsManager {
                     Bukkit.getServer().getWorld("bskyblock_world_the_end").playSound(l4, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
                     Bukkit.getServer().getWorld("world_nether").playSound(l5, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
                     Bukkit.getServer().getWorld("world_the_end").playSound(l6, Sound.ENTITY_ENDER_DRAGON_DEATH, 100.0f, 1.0f);
-                    island.setUniqueId(island.getUniqueId() + "(end)");
+
+                    MetaDataValue test = new MetaDataValue(true);
+
+                    island.putMetaData("EndAccess", test);
                 }
             }
 
